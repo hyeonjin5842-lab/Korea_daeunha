@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>이번 주 강의 체크</title>
+<style>
+  :root { box-sizing: border-box; }
+  * { box-sizing: inherit; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: env(safe-area-inset-top, 0px) 20px env(safe-area-inset-bottom, 0px);
+    color: #fff; text-align: center;
+    transition: background 0.8s ease;
+  }
+  body.todo {
+    background: radial-gradient(circle at 50% 40%, #e53935 0%, #b71c1c 60%, #7f0000 100%);
+    animation: alarm 1.6s ease-in-out infinite;
+  }
+  body.done {
+    background: linear-gradient(160deg, #a5d6a7 0%, #66bb6a 55%, #388e3c 100%);
+  }
+  @keyframes alarm {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(0.82); }
+  }
+  .card { max-width: 420px; width: 100%; }
+  .week { font-size: 14px; opacity: 0.85; margin-bottom: 8px; }
+  h1 { font-size: 26px; line-height: 1.4; margin: 0 0 24px; word-break: keep-all; }
+  .icon { font-size: 72px; margin-bottom: 12px; }
+  body.todo .icon { animation: shake 0.8s ease-in-out infinite; display: inline-block; }
+  @keyframes shake {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-8deg); }
+    75% { transform: rotate(8deg); }
+  }
+  .status { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .sub { font-size: 15px; opacity: 0.92; margin-bottom: 32px; word-break: keep-all; }
+  button {
+    font: inherit; font-size: 20px; font-weight: 700;
+    border: 0; border-radius: 999px; padding: 18px 40px; width: 100%;
+    cursor: pointer; transition: transform 0.1s ease;
+  }
+  button:active { transform: scale(0.97); }
+  body.todo button { background: #fff; color: #b71c1c; }
+  body.done button { background: rgba(255,255,255,0.9); color: #2e7d32; }
+  .hint { margin-top: 14px; font-size: 13px; opacity: 0.8; }
+</style>
+</head>
+<body class="todo">
+  <main class="card">
+    <div class="week" id="week"></div>
+    <div class="icon" id="icon">⏰</div>
+    <h1>대운하를 통해 본<br>중국의 정치경제사</h1>
+    <div class="status" id="status"></div>
+    <div class="sub" id="sub"></div>
+    <button id="btn" type="button">강의 수강완료</button>
+    <div class="hint" id="hint"></div>
+  </main>
+
+<script>
+(function () {
+  var STORAGE_KEY = "weekly-lecture-done-week";
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  // 이번 주 월요일 날짜를 키로 사용 → 월요일이 되면 키가 바뀌어 자동 초기화
+  function getWeek() {
+    var now = new Date();
+    var dayIdx = (now.getDay() + 6) % 7; // 월=0 ... 일=6
+    var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayIdx);
+    var sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+    return {
+      key: monday.getFullYear() + "-" + pad(monday.getMonth() + 1) + "-" + pad(monday.getDate()),
+      dayIdx: dayIdx,
+      daysLeft: 6 - dayIdx,
+      label: (monday.getMonth() + 1) + "/" + monday.getDate() + " ~ " + (sunday.getMonth() + 1) + "/" + sunday.getDate()
+    };
+  }
+
+  function load() {
+    try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+  }
+  function save(val) {
+    try {
+      if (val) localStorage.setItem(STORAGE_KEY, val);
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+  }
+
+  var el = {
+    body: document.body,
+    week: document.getElementById("week"),
+    icon: document.getElementById("icon"),
+    status: document.getElementById("status"),
+    sub: document.getElementById("sub"),
+    btn: document.getElementById("btn"),
+    hint: document.getElementById("hint")
+  };
+
+  function render() {
+    var w = getWeek();
+    var done = load() === w.key;
+    el.week.textContent = "이번 주 · " + w.label;
+
+    if (done) {
+      el.body.className = "done";
+      el.icon.textContent = "✅";
+      el.status.textContent = "이번 주 수강 완료!";
+      el.sub.textContent = "수고했어요. 이번 주는 마음 편히 쉬어도 돼요 🌿";
+      el.btn.textContent = "수강완료 취소하기";
+      el.hint.textContent = "월요일이 되면 자동으로 초기화돼요.";
+    } else {
+      el.body.className = "todo";
+      el.icon.textContent = "⏰";
+      el.status.textContent = "아직 안 들었어요!";
+      if (w.daysLeft === 0) {
+        el.sub.textContent = "오늘이 마지막 날이에요. 자정 전에 꼭 들어야 해요!";
+      } else {
+        el.sub.textContent = "일요일까지 " + w.daysLeft + "일 남았어요.";
+      }
+      el.btn.textContent = "강의 수강완료";
+      el.hint.textContent = "";
+    }
+  }
+
+  el.btn.addEventListener("click", function () {
+    var w = getWeek();
+    if (load() === w.key) save(null);
+    else save(w.key);
+    render();
+  });
+
+  // 탭을 켜둔 채 날짜가 바뀌거나 다시 돌아왔을 때 갱신
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) render();
+  });
+  setInterval(render, 60000);
+
+  render();
+})();
+</script>
+</body>
+</html>
